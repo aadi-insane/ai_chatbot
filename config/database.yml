@@ -1,0 +1,24 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  timeout: 5000
+  username: rails
+  password: password
+
+development:
+  <<: *default
+  database: ai_chatbot_development
+
+  host: localhost
+
+test:
+  <<: *default
+  database: ai_chatbot_test
+
+  host: localhost
+
+production:
+  <<: *default
+  database: ai_chatbot_production
+  host: localhost

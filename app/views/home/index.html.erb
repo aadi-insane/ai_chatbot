@@ -1,0 +1,79 @@
+<% if user_signed_in? %>
+  <div class="chat-container border border-dark">
+      <h1 class="text-center text-primary p-2">Ask the Rails AI Chatbot</h1>
+      <div class="chat-window" id="chat-window">
+          <!-- Messages will be here -->
+      </div>
+
+      <div class="input-container">
+          <input type="text" id="question" placeholder="Ask me anything..." autocomplete="off" class="border border-rounded border-primary" />
+          <button id="submit-btn" type="submit">Submit</button>
+      </div>
+  </div>
+
+  <script>
+  document.getElementById("submit-btn").addEventListener("click", function(e) {
+      e.preventDefault();
+
+      const question = document.getElementById("question").value;
+      if (!question) return;
+
+      // Display the user's message
+      appendMessage('user', question);
+      document.getElementById("question").value = ""; // Clear input field
+
+      // Show a typing indicator for the bot
+      const typingIndicator = document.createElement("div");
+      typingIndicator.className = "typing-indicator";
+      typingIndicator.textContent = "AI is typing...";
+      document.getElementById("chat-window").appendChild(typingIndicator);
+
+      // Scroll to the bottom of the chat window
+      scrollToBottom();
+
+      // Send the question to the server
+      fetch("/chatbot", {
+      method: "POST",
+      headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+      },
+      body: JSON.stringify({ question: question }),
+      })
+      .then((response) => response.json())
+      .then((data) => {
+          // Remove typing indicator
+          typingIndicator.remove();
+
+          // Display the bot's answer
+          appendMessage('bot', data.answer || data.error);
+          scrollToBottom();
+      })
+      .catch((error) => {
+          // Remove typing indicator and show error
+          typingIndicator.remove();
+          appendMessage('bot', 'Sorry, I am having trouble responding at the moment.');
+          scrollToBottom();
+      });
+  });
+
+  function appendMessage(sender, message) {
+      const chatWindow = document.getElementById("chat-window");
+      const messageDiv = document.createElement("div");
+      messageDiv.className = sender + "-message";
+      messageDiv.textContent = message;
+      chatWindow.appendChild(messageDiv);
+  }
+
+  function scrollToBottom() {
+      const chatWindow = document.getElementById("chat-window");
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+  </script>
+<% else %>
+  <div class="text-center">
+    <h1>Welcome to the AI Chatbot</h1>
+    <p>Please sign in to use the chatbot.</p>
+    <%= link_to 'Sign In', new_user_session_path, class: 'btn btn-primary' %>
+  </div>
+<% end %>

@@ -1,0 +1,29 @@
+<%# view/chatbot/show.html.erb %>
+
+<h1>Ask the AI Chatbot</h1>
+
+<form id="chat-form">
+  <input type="text" id="question" placeholder="Ask me anything..." />
+  <button type="submit">Submit</button>
+</form>
+
+<p id="response"></p>
+
+<script>
+  document.getElementById("chat-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const question = document.getElementById("question").value;
+    fetch("/show", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ question: question }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        document.getElementById("response").textContent = data.answer || data.error;
+      });
+  });
+</script>
