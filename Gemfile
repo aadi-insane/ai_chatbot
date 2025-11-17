@@ -70,3 +70,4 @@ end
 
 gem "open_router"
 gem "devise"
+gem "redcarpet"

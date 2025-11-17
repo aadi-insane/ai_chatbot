@@ -1,0 +1,5 @@
+<div class="chat-item mb-2", id="chat-side-list">
+  <% unless chat.messages.empty?%>
+    <%= link_to "Chat ID:#{chat.id}, #{chat.messages.first.content.truncate(20, omission: "...")}", chat_path(chat), class: "d-block text-decoration-none", data: { chat_id: chat.id, turbo: false } %>
+  <% end%>
+</div>

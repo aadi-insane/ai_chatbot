@@ -1,6 +1,7 @@
 class Chat < ApplicationRecord
   belongs_to :user
   has_many :messages
+  has_one :memory
   
-  enum status: { active: 0, archived: 1 }
+  enum :status, { active: 0, archived: 1 }
 end

@@ -1,74 +1,182 @@
 <% if user_signed_in? %>
-  <div class="chat-container border border-dark">
-      <h1 class="text-center text-primary p-2">Ask the Rails AI Chatbot</h1>
-      <div class="chat-window" id="chat-window">
-          <!-- Messages will be here -->
-      </div>
+  <div class="d-flex" style="height: 90vh;">
+    <!-- Sidebar -->
+    <div class="sidebar border-end p-3" style="width: 200px; overflow-y: auto;">
+      <h4>Your Chats</h4>
 
-      <div class="input-container">
-          <input type="text" id="question" placeholder="Ask me anything..." autocomplete="off" class="border border-rounded border-primary" />
-          <button id="submit-btn" type="submit">Submit</button>
+      <%= link_to "➕ New Chat", root_path, class: "btn btn-sm btn-primary mb-3" %>
+
+      <%= render @chats %>
+    </div>
+
+    <!-- Chat Window -->
+    <div class="flex-grow-1 p-3" style="margin-right: 10%; margin-bottom: 2%; margin-top: -2%">
+      <div class="chat-container border border-dark h-100 d-flex flex-column">
+        <h1 class="text-center text-primary p-2">Ask the Rails AI Chatbot</h1>
+
+        <div class="chat-window flex-grow-1 overflow-auto p-3" id="chat-window">
+          <!-- Messages will appear here -->
+        </div>
+
+        <div class="input-container p-2 border-top d-flex gap-2">
+          <input type="text" id="question" placeholder="Ask me anything..."
+                 autocomplete="off" class="form-control" />
+          <button id="submit-btn" type="submit" class="btn btn-primary">Submit</button>
+        </div>
       </div>
+    </div>
   </div>
 
+  <style>
+    .message {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 80%;
+    }
+    .user {
+      background-color: #dcf8c6;
+      align-self: flex-end;
+    }
+    .chatbot {
+      background-color: #f1f0f0;
+      align-self: flex-start;
+    }
+    .chat-window {
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
+
   <script>
-  document.getElementById("submit-btn").addEventListener("click", function(e) {
-      e.preventDefault();
+    document.addEventListener("DOMContentLoaded", function() {
+      let currentChatId = null;
+      const chatWindow = document.getElementById("chat-window");
+      const questionInput = document.getElementById("question");
+      const submitButton = document.getElementById("submit-btn");
+      const sidebar = document.querySelector(".sidebar");
 
-      const question = document.getElementById("question").value;
-      if (!question) return;
+      // Function to append a message to the chat window
+      function appendMessage(html) {
+        chatWindow.insertAdjacentHTML('beforeend', html);
+        scrollToBottom();
+      }
 
-      // Display the user's message
-      appendMessage('user', question);
-      document.getElementById("question").value = ""; // Clear input field
+      // Function to scroll the chat window to the bottom
+      function scrollToBottom() {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
 
-      // Show a typing indicator for the bot
-      const typingIndicator = document.createElement("div");
-      typingIndicator.className = "typing-indicator";
-      typingIndicator.textContent = "AI is typing...";
-      document.getElementById("chat-window").appendChild(typingIndicator);
+      // Function to clear the chat window
+      function clearChatWindow() {
+        chatWindow.innerHTML = "";
+      }
 
-      // Scroll to the bottom of the chat window
-      scrollToBottom();
+      // Function to set the active chat in the sidebar
+      function setActiveChat(chatLink) {
+        // Remove active class from all chat items
+        sidebar.querySelectorAll('.chat-item a').forEach(link => link.classList.remove('active'));
+        // Add active class to the clicked chat item
+        if (chatLink) {
+          chatLink.classList.add('active');
+        }
+      }
 
-      // Send the question to the server
-      fetch("/chatbot", {
-      method: "POST",
-      headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
-      },
-      body: JSON.stringify({ question: question }),
-      })
-      .then((response) => response.json())
-      .then((data) => {
-          // Remove typing indicator
+      // Handle new message submission
+      submitButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        const question = questionInput.value;
+        if (!question) return;
+
+        questionInput.value = "";
+
+        const typingIndicator = document.createElement("div");
+        typingIndicator.className = "typing-indicator";
+        typingIndicator.textContent = "AI is typing...";
+        chatWindow.appendChild(typingIndicator);
+        scrollToBottom();
+
+        const payload = {
+          message: { content: question }
+        };
+        if (currentChatId) {
+          payload.chat_id = currentChatId;
+        }
+
+        fetch("/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+          },
+          body: JSON.stringify(payload),
+        })
+        .then((response) => response.json())
+        .then((data) => {
           typingIndicator.remove();
-
-          // Display the bot's answer
-          appendMessage('bot', data.answer || data.error);
+          if (data.error) {
+            appendMessage(`<div class="message chatbot"><div class="message-content"><p>${data.error}</p></div></div>`);
+          } else {
+            if (!currentChatId) {
+              currentChatId = data.chat_id;
+              // Add the new chat to the sidebar
+              const newChatItem = document.createElement('div');
+              newChatItem.className = 'chat-item mb-2';
+              const newChatLink = document.createElement('a');
+              newChatLink.href = `/chats/${currentChatId}`;
+              newChatLink.className = 'd-block text-decoration-none';
+              newChatLink.textContent = `Chat #${currentChatId}`;
+              newChatLink.dataset.chatId = currentChatId;
+              newChatItem.appendChild(newChatLink);
+              const newChatButton = sidebar.querySelector('a[data-turbo-method="post"]');
+              newChatButton.parentNode.insertBefore(newChatItem, newChatButton.nextSibling);
+              setActiveChat(newChatLink);
+            }
+            appendMessage(data.user_message_html);
+            appendMessage(data.bot_message_html);
+          }
           scrollToBottom();
-      })
-      .catch((error) => {
-          // Remove typing indicator and show error
+        })
+        .catch((error) => {
           typingIndicator.remove();
-          appendMessage('bot', 'Sorry, I am having trouble responding at the moment.');
+          appendMessage(`<div class="message chatbot"><div class="message-content"><p>Sorry, I am having trouble responding right now.</p></div></div>`);
           scrollToBottom();
+        });
       });
-  });
 
-  function appendMessage(sender, message) {
-      const chatWindow = document.getElementById("chat-window");
-      const messageDiv = document.createElement("div");
-      messageDiv.className = sender + "-message";
-      messageDiv.textContent = message;
-      chatWindow.appendChild(messageDiv);
-  }
+      // Handle chat selection from the sidebar
+      sidebar.addEventListener('click', function(e) {
+        if (e.target.tagName === 'A' && e.target.dataset.chatId) {
+          e.preventDefault();
+          const chatId = e.target.dataset.chatId;
+          currentChatId = chatId;
+          clearChatWindow();
+          setActiveChat(e.target);
 
-  function scrollToBottom() {
-      const chatWindow = document.getElementById("chat-window");
-      chatWindow.scrollTop = chatWindow.scrollHeight;
-  }
+          fetch(`/chats/${chatId}`, {
+            headers: {
+              "Accept": "application/json"
+            }
+          })
+          .then(response => response.json())
+          .then(messages => {
+            messages.forEach(message => {
+              const messageHtml = `<div class="message ${message.sender}"><div class="message-content"><p>${message.content}</p></div></div>`;
+              appendMessage(messageHtml);
+            });
+          });
+        }
+      });
+
+      // Add data-chat-id to existing chat links
+      sidebar.querySelectorAll('.chat-item a').forEach(link => {
+        const path = link.getAttribute('href');
+        if (path !== '/chats') {
+          const chatId = path.split('/').pop();
+          link.dataset.chatId = chatId;
+        }
+      });
+    });
   </script>
 <% else %>
   <div class="text-center">
