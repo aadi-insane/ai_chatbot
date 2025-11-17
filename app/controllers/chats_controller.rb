@@ -11,7 +11,12 @@ class ChatsController < ApplicationController
 
     respond_to do |format|
       format.html
-      format.json { render json: @messages.as_json(only: [:sender, :content]) }
+      format.json do
+        html_messages = @messages.map do |message|
+          render_to_string(partial: 'messages/message', locals: { message: message }, formats: [:html])
+        end
+        render json: html_messages
+      end
     end
   end
 

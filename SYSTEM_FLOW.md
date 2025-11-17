@@ -94,3 +94,67 @@ The entire logic is contained within the `<script>` tag in `app/views/home/index
     ```
 
 This cycle of intercepting a user action, making a background request, and dynamically updating the page with the response gives the illusion of a continuous, real-time conversation.
+
+---
+
+## Rendering Formatted AI Responses with Redcarpet
+
+### The Problem
+The AI model returns responses formatted in Markdown, which includes newlines, code blocks (using backticks), and other formatting. When this text was rendered directly into the view, the browser did not interpret the Markdown, resulting in a single, unformatted block of text.
+
+### The Solution
+To properly display the formatted text, the Markdown content must be converted into HTML before it is rendered in the browser. This was achieved by using the `redcarpet` gem.
+
+### Implementation Steps
+
+1.  **Add the Gem**: The `redcarpet` gem was added to the `Gemfile` to provide Markdown processing capabilities.
+
+    ```ruby
+    # Gemfile
+    gem "redcarpet"
+    ```
+
+2.  **Create a Markdown Helper**: A helper method named `markdown` was created in `app/helpers/application_helper.rb`. This method takes the raw text from the AI, uses `Redcarpet` to convert it into an HTML string, and marks it as `.html_safe` so that Rails will render the tags instead of escaping them.
+
+    ```ruby
+    # app/helpers/application_helper.rb
+    module ApplicationHelper
+      def markdown(text)
+        options = {
+          filter_html: true,
+          hard_wrap: true,
+          link_attributes: { rel: 'nofollow', target: "_blank" },
+          space_after_headers: true,
+          fenced_code_blocks: true
+        }
+
+        extensions = {
+          autolink: true,
+          superscript: true,
+          disable_indented_code_blocks: true
+        }
+
+        renderer = Redcarpet::Render::HTML.new(options)
+        markdown = Redcarpet::Markdown.new(renderer, extensions)
+
+        markdown.render(text).html_safe
+      end
+    end
+    ```
+
+3.  **Update the View Partial**: The `app/views/messages/_message.html.erb` partial was updated to use the new `markdown` helper.
+
+    **Before:**
+    ```erb
+    <div class="message-content">
+      <p><%= message.content %></p>
+    </div>
+    ```
+
+    **After:**
+    ```erb
+    <div class="message-content">
+      <%= markdown(message.content) %>
+    </div>
+    ```
+    This change ensures that whenever a message is rendered, its content is first passed through the `markdown` helper. The resulting HTML (with `<p>`, `<pre>`, `<code>`, and other tags) is then inserted directly into the view, allowing the browser to display it with the intended formatting.

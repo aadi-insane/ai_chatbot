@@ -159,10 +159,9 @@
             }
           })
           .then(response => response.json())
-          .then(messages => {
-            messages.forEach(message => {
-              const messageHtml = `<div class="message ${message.sender}"><div class="message-content"><p>${message.content}</p></div></div>`;
-              appendMessage(messageHtml);
+          .then(html_messages => {
+            html_messages.forEach(message_html => {
+              appendMessage(message_html);
             });
           });
         }
